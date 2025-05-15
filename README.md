@@ -9,10 +9,10 @@ This repository contains a Django-based web application. Follow the instructions
 First, clone the repository to your local system:
 
 ```bash
-git clone https://github.com/your-username/your-django-project.git
+git clone https://github.com/AbRehmansaif/Saq-e-Tasawul.git
 ```
 ```
-cd your-django-project
+cd Saq-e-Tasawul
 ```
 
 ## 2. 🐍 Create and Activate a Virtual Environment
