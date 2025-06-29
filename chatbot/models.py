@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
 from shortuuid.django_fields import ShortUUIDField
 from django.utils import timezone
 import json
@@ -7,7 +7,7 @@ import json
 class ChatSession(models.Model):
     """Track user chat sessions"""
     session_id = ShortUUIDField(unique=True, length=20, max_length=25, prefix="chat_")
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
