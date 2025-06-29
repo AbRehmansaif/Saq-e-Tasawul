@@ -386,3 +386,9 @@ STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY")
 
 PAYPAL_RECEIVER_EMAIL = 'businessdestiny@gmail.com'
 PAYPAL_TEST = True
+
+# Optional: OpenAI (if you want to use it)
+OPENAI_API_KEY = ""  # Leave blank if not using
+
+# Required: LM Studio
+LM_STUDIO_BASE_URL = "http://127.0.0.1:1234/v1"
