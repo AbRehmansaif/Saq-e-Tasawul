@@ -1,0 +1,629 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Shopping Assistant</title>
+  <link rel="stylesheet" href="{% static 'css/chat.css' %}" />
+  <noscript>
+    <div style="text-align:center;color:red;margin-top:10px;">
+      This chatbot requires JavaScript. Please enable JavaScript to continue.
+    </div>
+  </noscript>
+  <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 12px;
+            height: 12px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .product-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .product-price {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .product-discount {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 0.9rem;
+            margin-right: 8px;
+        }
+
+        .product-stock {
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
+
+        .in-stock {
+            color: #4CAF50;
+        }
+
+        .out-of-stock {
+            color: #f44336;
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .suggestion-btn {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .suggestion-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .order-info {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .order-status {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .order-items {
+            margin-top: 10px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+            font-size: 1.2rem;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 10px 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .typing-indicator.show {
+            opacity: 1;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #c62828;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 95%;
+                height: 90vh;
+                border-radius: 15px;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .chat-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .product-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <div class="status-indicator"></div>
+      <h1>🛒 AI Shopping Assistant</h1>
+      <p>Ask me about products, orders, shipping, and more!</p>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div id="initialLoader" style="text-align:center; color: #888;">Initializing session...</div>
+      <div class="typing-indicator" id="typingIndicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <span style="margin-left: 10px; font-size: 0.9rem; color: #666;">AI is thinking...</span>
+      </div>
+    </div>
+
+    <div class="chat-input-container">
+      <form class="chat-input-form" id="chatForm">
+        {% csrf_token %}
+        <input
+          type="text"
+          class="chat-input"
+          id="messageInput"
+          placeholder="Type your message here..."
+          autocomplete="off"
+          required
+        />
+        <button type="submit" class="send-button" id="sendButton">➤</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    class ChatBot {
+      constructor() {
+        this.sessionId = null;
+        this.isTyping = false;
+        this.messagesContainer = document.getElementById("chatMessages");
+        this.messageInput = document.getElementById("messageInput");
+        this.sendButton = document.getElementById("sendButton");
+        this.chatForm = document.getElementById("chatForm");
+        this.typingIndicator = document.getElementById("typingIndicator");
+        this.initializeEventListeners();
+        this.initSession();
+      }
+
+      getCSRFToken() {
+        const name = "csrftoken";
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+          const [key, value] = cookie.trim().split("=");
+          if (key === name) return decodeURIComponent(value);
+        }
+        return "";
+      }
+
+      initializeEventListeners() {
+        this.chatForm.addEventListener("submit", this.handleSubmit.bind(this));
+        this.messageInput.addEventListener("keypress", this.handleKeyPress.bind(this));
+      }
+
+      handleSubmit(e) {
+        e.preventDefault();
+        const message = this.messageInput.value.trim();
+        if (message && !this.isTyping) {
+          this.sendMessage(message);
+        }
+      }
+
+      handleKeyPress(e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          this.handleSubmit(e);
+        }
+      }
+
+
+      async initSession() {
+        try {
+            const res = await fetch("/chatbot/session/create/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": this.getCSRFToken(),
+            },
+            body: JSON.stringify({ user_id: null })  // Ensure body is sent!
+            });
+
+            if (!res.ok) throw new Error("HTTP " + res.status);
+
+            const data = await res.json();
+            this.sessionId = data.session_id;
+            this.loadChatHistory();
+        } catch (error) {
+            console.error("Session init failed:", error);
+            this.addErrorMessage("❌ Failed to create session.");
+        }
+        }
+
+
+    //   async initSession() {
+    //     try {
+    //       const res = await fetch("/chatbot/session/create/", {
+    //         method: "POST",
+    //         headers: {
+    //           "X-CSRFToken": this.getCSRFToken(),
+    //         },
+    //       });
+    //       const data = await res.json();
+    //       this.sessionId = data.session_id;
+    //       document.getElementById("initialLoader")?.remove();
+    //       this.loadChatHistory();
+    //     } catch (error) {
+    //       this.addErrorMessage("❌ Failed to create session.");
+    //     }
+    //   }
+
+      async loadChatHistory() {
+        try {
+          const res = await fetch(`/chatbot/session/${this.sessionId}/history/`);
+          const data = await res.json();
+          data.messages.forEach((msg) => {
+            if (msg.sender === "user") {
+              this.addUserMessage(msg.message);
+            } else {
+              this.addBotMessage(msg);
+            }
+          });
+        } catch (error) {
+          console.error("History Error:", error);
+        }
+      }
+
+      async sendMessage(message) {
+        this.addUserMessage(message);
+        this.messageInput.value = "";
+        this.setTyping(true);
+        this.showTypingIndicator();
+
+        try {
+          const res = await fetch("/chatbot/chat/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": this.getCSRFToken(),
+            },
+            body: JSON.stringify({
+              session_id: this.sessionId,
+              message: message,
+            }),
+          });
+
+          const data = await res.json();
+          this.addBotMessage(data);
+        } catch (error) {
+          this.addErrorMessage("❌ Failed to get response from AI.");
+        } finally {
+          this.hideTypingIndicator();
+          this.setTyping(false);
+        }
+      }
+
+      addUserMessage(message) {
+        const messageElement = this.createMessageElement("user", message);
+        this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
+        this.scrollToBottom();
+      }
+
+      addBotMessage(response) {
+        const messageElement = this.createMessageElement("bot", response.message || "...");
+
+        if (response.suggestions?.length) {
+          const suggestionsDiv = document.createElement("div");
+          suggestionsDiv.className = "suggestions";
+
+          response.suggestions.forEach((text) => {
+            const btn = document.createElement("button");
+            btn.className = "suggestion-btn";
+            btn.textContent = text;
+            btn.onclick = () => this.sendMessage(text);
+            suggestionsDiv.appendChild(btn);
+          });
+
+          messageElement.querySelector(".message-content").appendChild(suggestionsDiv);
+        }
+
+        this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
+        this.scrollToBottom();
+      }
+
+      addErrorMessage(errorText) {
+        const div = document.createElement("div");
+        div.className = "error-message";
+        div.textContent = errorText;
+        this.messagesContainer.insertBefore(div, this.typingIndicator);
+        this.scrollToBottom();
+      }
+
+      createMessageElement(type, content) {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `message ${type}`;
+
+        const contentDiv = document.createElement("div");
+        contentDiv.className = "message-content";
+
+        const text = document.createElement("div");
+        text.textContent = content;
+
+        const time = document.createElement("div");
+        time.className = "message-time";
+        time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        contentDiv.appendChild(text);
+        contentDiv.appendChild(time);
+        msgDiv.appendChild(contentDiv);
+        return msgDiv;
+      }
+
+      setTyping(isTyping) {
+        this.isTyping = isTyping;
+        this.sendButton.disabled = isTyping;
+        this.messageInput.disabled = isTyping;
+      }
+
+      showTypingIndicator() {
+        this.typingIndicator.classList.add("show");
+        this.scrollToBottom();
+      }
+
+      hideTypingIndicator() {
+        this.typingIndicator.classList.remove("show");
+      }
+
+      scrollToBottom() {
+        setTimeout(() => {
+          this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        }, 100);
+      }
+    }
+
+    let chatBot;
+    document.addEventListener("DOMContentLoaded", () => {
+      chatBot = new ChatBot();
+    });
+  </script>
+</body>
+</html>

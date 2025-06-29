@@ -1,10 +1,10 @@
 from typing import Dict, Any, List, Optional
 from django.db.models import Q
 from core.models import Product, CartOrder, CartOrderProducts
-from ..models import ChatSession, ChatMessage
-from ..serializers import ProductSerializer, OrderSerializer
-from .nlp_service import NLPService
-from .llm_service import LLMService
+from chatbot.models import ChatSession, ChatMessage
+from chatbot.v2.serializers import ProductSerializer, OrderSerializer
+from chatbot.services.nlp_service import NLPService
+from chatbot.services.llm_service import LLMService
 
 class ChatService:
     """Main chat service that orchestrates NLP and response generation"""
@@ -312,7 +312,7 @@ class ChatService:
     def _handle_help_request(self, message: str, entities: Dict[str, Any], session: ChatSession) -> Dict[str, Any]:
         """Handle help and support requests"""
         return {
-            'message': "I'm here to help! I can assist you with:\n• Finding products and checking availability\n• Tracking your orders and delivery status\n• Browsing product categories\n• Checking prices and deals\n• General shopping questions\n\nWhat would you like help with?",
+            'message': "I'm here to help! I can assist you with:\n\n• Finding products and checking availability\n• Tracking your orders and delivery status\n• Browsing product categories\n• Checking prices and deals\n• General shopping questions\n\nWhat would you like help with?",
             'suggestions': [
                 "Find products",
                 "Track my order", 

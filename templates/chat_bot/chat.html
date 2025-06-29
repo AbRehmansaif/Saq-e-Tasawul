@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Shopping Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 12px;
+            height: 12px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .product-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .product-price {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .product-discount {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 0.9rem;
+            margin-right: 8px;
+        }
+
+        .product-stock {
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
+
+        .in-stock {
+            color: #4CAF50;
+        }
+
+        .out-of-stock {
+            color: #f44336;
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .suggestion-btn {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .suggestion-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .order-info {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .order-status {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .order-items {
+            margin-top: 10px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+            font-size: 1.2rem;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 10px 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .typing-indicator.show {
+            opacity: 1;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #c62828;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 95%;
+                height: 90vh;
+                border-radius: 15px;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .chat-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .product-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="status-indicator"></div>
+            <h1>🛒 AI Shopping Assistant</h1>
+            <p>Ask me about products, orders, shipping, and more!</p>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">
+                    <div>Hello! Welcome to our store. I'm your AI shopping assistant. How can I help you today?</div>
+                    <div class="suggestions">
+                        <button class="suggestion-btn" onclick="chatBot.sendSuggestion('Search for products')">Search Products</button>
+                        <button class="suggestion-btn" onclick="chatBot.sendSuggestion('Check order status')">Check Orders</button>
+                        <button class="suggestion-btn" onclick="chatBot.sendSuggestion('Browse categories')">Browse Categories</button>
+                        <button class="suggestion-btn" onclick="chatBot.sendSuggestion('Get help')">Get Help</button>
+                    </div>
+                    <div class="message-time">Just now</div>
+                </div>
+            </div>
+            
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <span style="margin-left: 10px; font-size: 0.9rem; color: #666;">AI is thinking...</span>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <form class="chat-input-form" id="chatForm">
+                <input 
+                    type="text" 
+                    class="chat-input" 
+                    id="messageInput" 
+                    placeholder="Type your message here..."
+                    autocomplete="off"
+                    required
+                >
+                <button type="submit" class="send-button" id="sendButton">
+                    ➤
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        class ChatBot {
+            constructor() {
+                this.sessionId = this.generateSessionId();
+                this.isTyping = false;
+                this.messagesContainer = document.getElementById('chatMessages');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.chatForm = document.getElementById('chatForm');
+                this.typingIndicator = document.getElementById('typingIndicator');
+                
+                // Mock data for demonstration
+                this.mockProducts = [
+                    {
+                        id: 1,
+                        name: "Wireless Bluetooth Headphones",
+                        price: 99.99,
+                        effective_price: 79.99,
+                        has_discount: true,
+                        in_stock: true,
+                        stock_quantity: 15,
+                        category: "Electronics"
+                    },
+                    {
+                        id: 2,
+                        name: "Smart Fitness Watch",
+                        price: 199.99,
+                        effective_price: 199.99,
+                        has_discount: false,
+                        in_stock: true,
+                        stock_quantity: 8,
+                        category: "Electronics"
+                    },
+                    {
+                        id: 3,
+                        name: "Organic Cotton T-Shirt",
+                        price: 29.99,
+                        effective_price: 24.99,
+                        has_discount: true,
+                        in_stock: false,
+                        stock_quantity: 0,
+                        category: "Clothing"
+                    }
+                ];
+
+                this.mockOrders = {
+                    "12345": {
+                        id: "12345",
+                        status: "Shipped",
+                        tracking: "TRK123456789",
+                        total: 159.98,
+                        items: [
+                            { name: "Wireless Bluetooth Headphones", quantity: 1, price: 79.99 },
+                            { name: "Phone Case", quantity: 2, price: 40.00 }
+                        ],
+                        estimated_delivery: "Tomorrow"
+                    }
+                };
+                
+                this.initializeEventListeners();
+                this.hideTypingIndicator();
+            }
+
+            generateSessionId() {
+                return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+
+            initializeEventListeners() {
+                this.chatForm.addEventListener('submit', this.handleSubmit.bind(this));
+                this.messageInput.addEventListener('keypress', this.handleKeyPress.bind(this));
+            }
+
+            handleSubmit(e) {
+                e.preventDefault();
+                const message = this.messageInput.value.trim();
+                if (message && !this.isTyping) {
+                    this.sendMessage(message);
+                }
+            }
+
+            handleKeyPress(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.handleSubmit(e);
+                }
+            }
+
+            async sendMessage(message) {
+                this.addUserMessage(message);
+                this.messageInput.value = '';
+                this.setTyping(true);
+                this.showTypingIndicator();
+
+                // Simulate API delay
+                await this.delay(1000 + Math.random() * 2000);
+
+                try {
+                    const response = this.generateMockResponse(message);
+                    this.addBotMessage(response);
+                } catch (error) {
+                    console.error('Chat error:', error);
+                    this.addErrorMessage('Failed to send message. Please try again.');
+                } finally {
+                    this.hideTypingIndicator();
+                    this.setTyping(false);
+                }
+            }
+
+            generateMockResponse(message) {
+                const lowerMessage = message.toLowerCase();
+                
+                // Product search responses
+                if (lowerMessage.includes('search') || lowerMessage.includes('find') || lowerMessage.includes('product')) {
+                    return {
+                        message: "I found some products that might interest you:",
+                        data: {
+                            products: this.mockProducts.slice(0, 2)
+                        },
+                        suggestions: ["Show more products", "Filter by category", "Check availability"]
+                    };
+                }
+                
+                // Order status responses
+                if (lowerMessage.includes('order') || lowerMessage.includes('track') || lowerMessage.includes('12345')) {
+                    return {
+                        message: "Here's your order information:",
+                        data: {
+                            order: this.mockOrders["12345"]
+                        },
+                        suggestions: ["Track package", "Modify order", "Contact support"]
+                    };
+                }
+                
+                // Category browsing
+                if (lowerMessage.includes('categor') || lowerMessage.includes('browse')) {
+                    return {
+                        message: "Here are our available categories:",
+                        suggestions: ["Electronics", "Clothing", "Home & Garden", "Sports", "Books"]
+                    };
+                }
+                
+                // Help responses
+                if (lowerMessage.includes('help')) {
+                    return {
+                        message: "I can help you with: searching products, checking orders, browsing categories, getting support, and answering questions about shipping and returns.",
+                        suggestions: ["Search products", "Check order status", "Shipping info", "Return policy"]
+                    };
+                }
+                
+                // Electronics category
+                if (lowerMessage.includes('electronic')) {
+                    return {
+                        message: "Here are our electronics products:",
+                        data: {
+                            products: this.mockProducts.filter(p => p.category === "Electronics")
+                        },
+                        suggestions: ["Show smartphones", "Show laptops", "Show accessories"]
+                    };
+                }
+                
+                // Default response
+                return {
+                    message: "I understand you're looking for information. Could you please be more specific about what you need help with?",
+                    suggestions: ["Search products", "Check orders", "Browse categories", "Get help"]
+                };
+            }
+
+            sendSuggestion(suggestion) {
+                this.sendMessage(suggestion);
+            }
+
+            addUserMessage(message) {
+                const messageElement = this.createMessageElement('user', message);
+                this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
+                this.scrollToBottom();
+            }
+
+            addBotMessage(response) {
+                const messageElement = this.createMessageElement('bot', response.message);
+                
+                // Add product cards if present
+                if (response.data && response.data.products) {
+                    const productsContainer = document.createElement('div');
+                    response.data.products.forEach(product => {
+                        productsContainer.appendChild(this.createProductCard(product));
+                    });
+                    messageElement.querySelector('.message-content').appendChild(productsContainer);
+                }
+
+                // Add order information if present
+                if (response.data && response.data.order) {
+                    const orderContainer = this.createOrderCard(response.data.order);
+                    messageElement.querySelector('.message-content').appendChild(orderContainer);
+                }
+
+                // Add suggestions if present
+                if (response.suggestions && response.suggestions.length > 0) {
+                    const suggestionsContainer = document.createElement('div');
+                    suggestionsContainer.className = 'suggestions';
+                    
+                    response.suggestions.forEach(suggestion => {
+                        const btn = document.createElement('button');
+                        btn.className = 'suggestion-btn';
+                        btn.textContent = suggestion;
+                        btn.onclick = () => this.sendSuggestion(suggestion);
+                        suggestionsContainer.appendChild(btn);
+                    });
+                    
+                    messageElement.querySelector('.message-content').appendChild(suggestionsContainer);
+                }
+
+                this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
+                this.scrollToBottom();
+            }
+
+            addErrorMessage(errorText) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = errorText;
+                this.messagesContainer.insertBefore(errorDiv, this.typingIndicator);
+                this.scrollToBottom();
+            }
+
+            createMessageElement(type, content) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                
+                const textDiv = document.createElement('div');
+                textDiv.textContent = content;
+                contentDiv.appendChild(textDiv);
+                
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                contentDiv.appendChild(timeDiv);
+                
+                messageDiv.appendChild(contentDiv);
+                return messageDiv;
+            }
+
+            createProductCard(product) {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                
+                const header = document.createElement('div');
+                header.className = 'product-header';
+                
+                const name = document.createElement('div');
+                name.className = 'product-name';
+                name.textContent = product.name;
+                
+                const priceContainer = document.createElement('div');
+                if (product.has_discount) {
+                    const originalPrice = document.createElement('span');
+                    originalPrice.className = 'product-discount';
+                    originalPrice.textContent = `$${product.price}`;
+                    priceContainer.appendChild(originalPrice);
+                }
+                
+                const price = document.createElement('span');
+                price.className = 'product-price';
+                price.textContent = `$${product.effective_price}`;
+                priceContainer.appendChild(price);
+                
+                header.appendChild(name);
+                header.appendChild(priceContainer);
+                
+                const stock = document.createElement('div');
+                stock.className = `product-stock ${product.in_stock ? 'in-stock' : 'out-of-stock'}`;
+                stock.textContent = product.in_stock ? 
+                    `✓ In Stock (${product.stock_quantity} available)` : 
+                    '✗ Out of Stock';
+                
+                card.appendChild(header);
+                card.appendChild(stock);
+                
+                return card;
+            }
+
+            createOrderCard(order) {
+                const card = document.createElement('div');
+                card.className = 'order-info';
+                
+                const status = document.createElement('div');
+                status.className = 'order-status';
+                status.textContent = `Order #${order.id} - ${order.status}`;
+                
+                const tracking = document.createElement('div');
+                tracking.textContent = `Tracking: ${order.tracking}`;
+                
+                const delivery = document.createElement('div');
+                delivery.textContent = `Estimated Delivery: ${order.estimated_delivery}`;
+                
+                const itemsHeader = document.createElement('div');
+                itemsHeader.textContent = 'Items:';
+                itemsHeader.style.fontWeight = 'bold';
+                itemsHeader.style.marginTop = '10px';
+                
+                const itemsContainer = document.createElement('div');
+                itemsContainer.className = 'order-items';
+                
+                order.items.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'order-item';
+                    
+                    const itemName = document.createElement('span');
+                    itemName.textContent = `${item.name} (x${item.quantity})`;
+                    
+                    const itemPrice = document.createElement('span');
+                    itemPrice.textContent = `$${item.price}`;
+                    
+                    itemDiv.appendChild(itemName);
+                    itemDiv.appendChild(itemPrice);
+                    itemsContainer.appendChild(itemDiv);
+                });
+                
+                const total = document.createElement('div');
+                total.style.fontWeight = 'bold';
+                total.style.marginTop = '10px';
+                total.style.textAlign = 'right';
+                total.textContent = `Total: $${order.total}`;
+                
+                card.appendChild(status);
+                card.appendChild(tracking);
+                card.appendChild(delivery);
+                card.appendChild(itemsHeader);
+                card.appendChild(itemsContainer);
+                card.appendChild(total);
+                
+                return card;
+            }
+
+            showTypingIndicator() {
+                this.typingIndicator.classList.add('show');
+                this.scrollToBottom();
+            }
+
+            hideTypingIndicator() {
+                this.typingIndicator.classList.remove('show');
+            }
+
+            setTyping(isTyping) {
+                this.isTyping = isTyping;
+                this.sendButton.disabled = isTyping;
+                this.messageInput.disabled = isTyping;
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                }, 100);
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            getCSRFToken() {
+                // For demonstration purposes - in real Django app, get from cookie or meta tag
+                return 'mock-csrf-token';
+            }
+        }
+
+        // Initialize the chatbot when the page loads
+        let chatBot;
+        document.addEventListener('DOMContentLoaded', function() {
+            chatBot = new ChatBot();
+        });
+
+        // Global function for suggestion buttons in initial message
+        function sendSuggestion(suggestion) {
+            if (chatBot) {
+                chatBot.sendSuggestion(suggestion);
+            }
+        }
+    </script>
+</body>
+</html>
+<!-- </html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Shopping Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 12px;
+            height: 12px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .product-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .product-price {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .product-discount {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 0.9rem;
+            margin-right: 8px;
+        }
+
+        .product-stock {
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
+
+        .in-stock {
+            color: #4CAF50;
+        }
+
+        .out-of-stock {
+            color: #f44336;
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .suggestion-btn {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .suggestion-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .order-info {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .order-status {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .order-items {
+            margin-top: 10px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+            font-size: 1.2rem;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 10px 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .typing-indicator.show {
+            opacity: 1;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #c62828;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 95%;
+                height: 90vh;
+                border-radius: 15px;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .chat-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .product-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="status-indicator"></div>
+            <h1>🛒 AI Shopping Assistant</h1>
+            <p>Ask me about products, orders, shipping, and more!</p>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">
+                    <div>Hello! Welcome to our store. I'm your AI shopping assistant. How can I help you today?</div>
+                    <div class="suggestions">
+                        <button class="suggestion-btn" onclick="chatBot.sendSuggestion('Search for products')">Search Products</button>
+                        <button class="suggestion-btn" onclick="chatBot.sendSuggestion('Check order status')">Check Orders</button>
+                        <button class="suggestion-btn" onclick="chatBot.sendSuggestion('Browse categories')">Browse Categories</button>
+                        <button class="suggestion-btn" onclick="chatBot.sendSuggestion('Get help')">Get Help</button>
+                    </div>
+                    <div class="message-time">Just now</div>
+                </div>
+            </div>
+            
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <span style="margin-left: 10px; font-size: 0.9rem; color: #666;">AI is thinking...</span>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <form class="chat-input-form" id="chatForm">
+                <input 
+                    type="text" 
+                    class="chat-input" 
+                    id="messageInput" 
+                    placeholder="Type your message here..."
+                    autocomplete="off"
+                    required
+                >
+                <button type="submit" class="send-button" id="sendButton">
+                    ➤
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        class ChatBot {
+            constructor() {
+                this.sessionId = this.generateSessionId();
+                this.isTyping = false;
+                this.messagesContainer = document.getElementById('chatMessages');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.chatForm = document.getElementById('chatForm');
+                this.typingIndicator = document.getElementById('typingIndicator');
+                
+                // Mock data for demonstration
+                this.mockProducts = [
+                    {
+                        id: 1,
+                        name: "Wireless Bluetooth Headphones",
+                        price: 99.99,
+                        effective_price: 79.99,
+                        has_discount: true,
+                        in_stock: true,
+                        stock_quantity: 15,
+                        category: "Electronics"
+                    },
+                    {
+                        id: 2,
+                        name: "Smart Fitness Watch",
+                        price: 199.99,
+                        effective_price: 199.99,
+                        has_discount: false,
+                        in_stock: true,
+                        stock_quantity: 8,
+                        category: "Electronics"
+                    },
+                    {
+                        id: 3,
+                        name: "Organic Cotton T-Shirt",
+                        price: 29.99,
+                        effective_price: 24.99,
+                        has_discount: true,
+                        in_stock: false,
+                        stock_quantity: 0,
+                        category: "Clothing"
+                    }
+                ];
+
+                this.mockOrders = {
+                    "12345": {
+                        id: "12345",
+                        status: "Shipped",
+                        tracking: "TRK123456789",
+                        total: 159.98,
+                        items: [
+                            { name: "Wireless Bluetooth Headphones", quantity: 1, price: 79.99 },
+                            { name: "Phone Case", quantity: 2, price: 40.00 }
+                        ],
+                        estimated_delivery: "Tomorrow"
+                    }
+                };
+                
+                this.initializeEventListeners();
+                this.hideTypingIndicator();
+            }
+
+            generateSessionId() {
+                return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+
+            initializeEventListeners() {
+                this.chatForm.addEventListener('submit', this.handleSubmit.bind(this));
+                this.messageInput.addEventListener('keypress', this.handleKeyPress.bind(this));
+            }
+
+            handleSubmit(e) {
+                e.preventDefault();
+                const message = this.messageInput.value.trim();
+                if (message && !this.isTyping) {
+                    this.sendMessage(message);
+                }
+            }
+
+            handleKeyPress(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.handleSubmit(e);
+                }
+            }
+
+            async sendMessage(message) {
+                this.addUserMessage(message);
+                this.messageInput.value = '';
+                this.setTyping(true);
+                this.showTypingIndicator();
+
+                // Simulate API delay
+                await this.delay(1000 + Math.random() * 2000);
+
+                try {
+                    const response = this.generateMockResponse(message);
+                    this.addBotMessage(response);
+                } catch (error) {
+                    console.error('Chat error:', error);
+                    this.addErrorMessage('Failed to send message. Please try again.');
+                } finally {
+                    this.hideTypingIndicator();
+                    this.setTyping(false);
+                }
+            }
+
+            generateMockResponse(message) {
+                const lowerMessage = message.toLowerCase();
+                
+                // Product search responses
+                if (lowerMessage.includes('search') || lowerMessage.includes('find') || lowerMessage.includes('product')) {
+                    return {
+                        message: "I found some products that might interest you:",
+                        data: {
+                            products: this.mockProducts.slice(0, 2)
+                        },
+                        suggestions: ["Show more products", "Filter by category", "Check availability"]
+                    };
+                }
+                
+                // Order status responses
+                if (lowerMessage.includes('order') || lowerMessage.includes('track') || lowerMessage.includes('12345')) {
+                    return {
+                        message: "Here's your order information:",
+                        data: {
+                            order: this.mockOrders["12345"]
+                        },
+                        suggestions: ["Track package", "Modify order", "Contact support"]
+                    };
+                }
+                
+                // Category browsing
+                if (lowerMessage.includes('categor') || lowerMessage.includes('browse')) {
+                    return {
+                        message: "Here are our available categories:",
+                        suggestions: ["Electronics", "Clothing", "Home & Garden", "Sports", "Books"]
+                    };
+                }
+                
+                // Help responses
+                if (lowerMessage.includes('help')) {
+                    return {
+                        message: "I can help you with: searching products, checking orders, browsing categories, getting support, and answering questions about shipping and returns.",
+                        suggestions: ["Search products", "Check order status", "Shipping info", "Return policy"]
+                    };
+                }
+                
+                // Electronics category
+                if (lowerMessage.includes('electronic')) {
+                    return {
+                        message: "Here are our electronics products:",
+                        data: {
+                            products: this.mockProducts.filter(p => p.category === "Electronics")
+                        },
+                        suggestions: ["Show smartphones", "Show laptops", "Show accessories"]
+                    };
+                }
+                
+                // Default response
+                return {
+                    message: "I understand you're looking for information. Could you please be more specific about what you need help with?",
+                    suggestions: ["Search products", "Check orders", "Browse categories", "Get help"]
+                };
+            }
+
+            sendSuggestion(suggestion) {
+                this.sendMessage(suggestion);
+            }
+
+            addUserMessage(message) {
+                const messageElement = this.createMessageElement('user', message);
+                this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
+                this.scrollToBottom();
+            }
+
+            addBotMessage(response) {
+                const messageElement = this.createMessageElement('bot', response.message);
+                
+                // Add product cards if present
+                if (response.data && response.data.products) {
+                    const productsContainer = document.createElement('div');
+                    response.data.products.forEach(product => {
+                        productsContainer.appendChild(this.createProductCard(product));
+                    });
+                    messageElement.querySelector('.message-content').appendChild(productsContainer);
+                }
+
+                // Add order information if present
+                if (response.data && response.data.order) {
+                    const orderContainer = this.createOrderCard(response.data.order);
+                    messageElement.querySelector('.message-content').appendChild(orderContainer);
+                }
+
+                // Add suggestions if present
+                if (response.suggestions && response.suggestions.length > 0) {
+                    const suggestionsContainer = document.createElement('div');
+                    suggestionsContainer.className = 'suggestions';
+                    
+                    response.suggestions.forEach(suggestion => {
+                        const btn = document.createElement('button');
+                        btn.className = 'suggestion-btn';
+                        btn.textContent = suggestion;
+                        btn.onclick = () => this.sendSuggestion(suggestion);
+                        suggestionsContainer.appendChild(btn);
+                    });
+                    
+                    messageElement.querySelector('.message-content').appendChild(suggestionsContainer);
+                }
+
+                this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
+                this.scrollToBottom();
+            }
+
+            addErrorMessage(errorText) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = errorText;
+                this.messagesContainer.insertBefore(errorDiv, this.typingIndicator);
+                this.scrollToBottom();
+            }
+
+            createMessageElement(type, content) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                
+                const textDiv = document.createElement('div');
+                textDiv.textContent = content;
+                contentDiv.appendChild(textDiv);
+                
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                contentDiv.appendChild(timeDiv);
+                
+                messageDiv.appendChild(contentDiv);
+                return messageDiv;
+            }
+
+            createProductCard(product) {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                
+                const header = document.createElement('div');
+                header.className = 'product-header';
+                
+                const name = document.createElement('div');
+                name.className = 'product-name';
+                name.textContent = product.name;
+                
+                const priceContainer = document.createElement('div');
+                if (product.has_discount) {
+                    const originalPrice = document.createElement('span');
+                    originalPrice.className = 'product-discount';
+                    originalPrice.textContent = `$${product.price}`;
+                    priceContainer.appendChild(originalPrice);
+                }
+                
+                const price = document.createElement('span');
+                price.className = 'product-price';
+                price.textContent = `$${product.effective_price}`;
+                priceContainer.appendChild(price);
+                
+                header.appendChild(name);
+                header.appendChild(priceContainer);
+                
+                const stock = document.createElement('div');
+                stock.className = `product-stock ${product.in_stock ? 'in-stock' : 'out-of-stock'}`;
+                stock.textContent = product.in_stock ? 
+                    `✓ In Stock (${product.stock_quantity} available)` : 
+                    '✗ Out of Stock';
+                
+                card.appendChild(header);
+                card.appendChild(stock);
+                
+                return card;
+            }
+
+            createOrderCard(order) {
+                const card = document.createElement('div');
+                card.className = 'order-info';
+                
+                const status = document.createElement('div');
+                status.className = 'order-status';
+                status.textContent = `Order #${order.id} - ${order.status}`;
+                
+                const tracking = document.createElement('div');
+                tracking.textContent = `Tracking: ${order.tracking}`;
+                
+                const delivery = document.createElement('div');
+                delivery.textContent = `Estimated Delivery: ${order.estimated_delivery}`;
+                
+                const itemsHeader = document.createElement('div');
+                itemsHeader.textContent = 'Items:';
+                itemsHeader.style.fontWeight = 'bold';
+                itemsHeader.style.marginTop = '10px';
+                
+                const itemsContainer = document.createElement('div');
+                itemsContainer.className = 'order-items';
+                
+                order.items.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'order-item';
+                    
+                    const itemName = document.createElement('span');
+                    itemName.textContent = `${item.name} (x${item.quantity})`;
+                    
+                    const itemPrice = document.createElement('span');
+                    itemPrice.textContent = `$${item.price}`;
+                    
+                    itemDiv.appendChild(itemName);
+                    itemDiv.appendChild(itemPrice);
+                    itemsContainer.appendChild(itemDiv);
+                });
+                
+                const total = document.createElement('div');
+                total.style.fontWeight = 'bold';
+                total.style.marginTop = '10px';
+                total.style.textAlign = 'right';
+                total.textContent = `Total: $${order.total}`;
+                
+                card.appendChild(status);
+                card.appendChild(tracking);
+                card.appendChild(delivery);
+                card.appendChild(itemsHeader);
+                card.appendChild(itemsContainer);
+                card.appendChild(total);
+                
+                return card;
+            }
+
+            showTypingIndicator() {
+                this.typingIndicator.classList.add('show');
+                this.scrollToBottom();
+            }
+
+            hideTypingIndicator() {
+                this.typingIndicator.classList.remove('show');
+            }
+
+            setTyping(isTyping) {
+                this.isTyping = isTyping;
+                this.sendButton.disabled = isTyping;
+                this.messageInput.disabled = isTyping;
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                }, 100);
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            getCSRFToken() {
+                // For demonstration purposes - in real Django app, get from cookie or meta tag
+                return 'mock-csrf-token';
+            }
+        }
+
+        // Initialize the chatbot when the page loads
+        // let chatBot;
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     chatBot = new ChatBot();
+        // });
+
+        // Global function for suggestion buttons in initial message
+        function sendSuggestion(suggestion) {
+            if (chatBot) {
+                chatBot.sendSuggestion(suggestion);
+            }
+        }
+    </script>
+</body>
+</html> -->

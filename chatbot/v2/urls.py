@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ChatAPIView, ChatHistoryAPIView, SessionCreateAPIView, quick_search
+from chatbot.v2.views import ChatAPIView, ChatHistoryAPIView, SessionCreateAPIView, quick_search
 
 app_name = 'chatbot'
 

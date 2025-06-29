@@ -7,7 +7,7 @@ import json
 class ChatSession(models.Model):
     """Track user chat sessions"""
     session_id = ShortUUIDField(unique=True, length=20, max_length=25, prefix="chat_")
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
