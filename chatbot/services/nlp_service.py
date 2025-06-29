@@ -136,5 +136,9 @@ class NLPService:
         if any(keyword in text_lower for keyword in ['help', 'support', 'assist', 'question']):
             return 'help_request'
         
+        if any(keyword in text_lower for keyword in ['return', 'refund', 'return policy', 'return item', 'how to return', 'return product']):
+            return 'return_policy'
+
+        
         # Default
         return 'general_inquiry'
