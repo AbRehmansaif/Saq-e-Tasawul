@@ -117,6 +117,12 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
+        .message-content a {
+          text-decoration: none;
+          color: inherit;
+        }
+
+
         .message.user .message-content {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -413,6 +419,32 @@
   </div>
 
   <script>
+    
+    function addToCart(pid) {
+      const productCard = document.querySelector(`[data-pid="${pid}"]`);
+      const title = productCard?.getAttribute("data-title") || "Product";
+      const qty = 1;
+      const price = productCard?.getAttribute("data-price") || "0.00";
+      const image = productCard?.getAttribute("data-image") || "";
+      const id = productCard?.getAttribute("data-id") || pid;
+
+      const url = `/add-to-cart/?id=${id}&title=${encodeURIComponent(title)}&qty=${qty}&price=${price}&image=${encodeURIComponent(image)}&pid=${pid}`;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.totalcartitems) {
+            chatBot.addBotMessage({ message: "🛒 Product added to your cart!" });
+          } else {
+            chatBot.addBotMessage({ message: "❌ Failed to add to cart." });
+          }
+        })
+        .catch(err => {
+          chatBot.addBotMessage({ message: "❌ Error adding to cart." });
+        });
+    }
+
+
     class ChatBot {
       constructor() {
         this.sessionId = null;
@@ -465,13 +497,26 @@
                 "Content-Type": "application/json",
                 "X-CSRFToken": this.getCSRFToken(),
             },
-            body: JSON.stringify({ user_id: null })  // Ensure body is sent!
+            body: JSON.stringify({ user_id: null })
             });
 
             if (!res.ok) throw new Error("HTTP " + res.status);
 
             const data = await res.json();
             this.sessionId = data.session_id;
+
+            this.addBotMessage({
+              message: `
+                👋 Welcome! I'm your shopping assistant. <br>  
+                Here's how I can help you: <br>
+                🔍 Find products  <br>
+                📦 Track your orders  <br>
+                🗂️ Browse categories  <br>
+                💬 Ask questions anytime!<br>
+              `,
+              suggestions: ["🛍 Browse categories", "🔎 Search products", "🚚 Track my order"]
+            });
+
             this.loadChatHistory();
         } catch (error) {
             console.error("Session init failed:", error);
@@ -549,26 +594,69 @@
       }
 
       addBotMessage(response) {
-        const messageElement = this.createMessageElement("bot", response.message || "...");
+      const messageElement = this.createMessageElement("bot", response.message || "...");
 
-        if (response.suggestions?.length) {
-          const suggestionsDiv = document.createElement("div");
-          suggestionsDiv.className = "suggestions";
+      // ✅ Render suggestions
+      if (response.suggestions?.length) {
+        const suggestionsDiv = document.createElement("div");
+        suggestionsDiv.className = "suggestions";
 
-          response.suggestions.forEach((text) => {
-            const btn = document.createElement("button");
-            btn.className = "suggestion-btn";
-            btn.textContent = text;
-            btn.onclick = () => this.sendMessage(text);
-            suggestionsDiv.appendChild(btn);
-          });
+        response.suggestions.forEach((text) => {
+          const btn = document.createElement("button");
+          btn.className = "suggestion-btn";
+          btn.textContent = text;
+          btn.onclick = () => this.sendMessage(text);
+          suggestionsDiv.appendChild(btn);
+        });
 
-          messageElement.querySelector(".message-content").appendChild(suggestionsDiv);
-        }
-
-        this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
-        this.scrollToBottom();
+        messageElement.querySelector(".message-content").appendChild(suggestionsDiv);
       }
+
+      // ✅ Render product cards if available
+      if (response.data?.products?.length) {
+        const products = response.data.products;
+        const productContainer = document.createElement("div");
+
+        products.forEach((product) => {
+          const link = document.createElement("a");
+          link.href = `/product/${product.pid}/`; // or product.slug if you're using slugs
+          link.target = "_blank"; // optional: open in new tab
+          link.style.textDecoration = "none";
+
+          const card = document.createElement("div");
+          card.className = "product-card";
+
+          card.innerHTML = `
+            <div class="product-header">
+              <div class="product-name">${product.title}</div>
+              <div>
+                ${product.old_price ? `<span class="product-discount">${product.old_price}</span>` : ""}
+                <span class="product-price">${product.price}</span>
+              </div>
+            </div>
+            <div class="product-stock ${product.in_stock ? 'in-stock' : 'out-of-stock'}">
+              ${product.in_stock ? '🟢 In stock' : '🔴 Out of stock'} (${product.stock_count || 0})
+            </div>
+            <button class="suggestion-btn" onclick="addToCart('${product.pid}')">Add to Cart</button>
+          `;
+          card.setAttribute("data-pid", product.pid);
+          card.setAttribute("data-id", product.pid); // or product.id if available
+          card.setAttribute("data-title", product.title);
+          card.setAttribute("data-price", product.price);
+          card.setAttribute("data-image", product.image);
+
+          link.appendChild(card);
+          productContainer.appendChild(card);
+        });
+
+        messageElement.querySelector(".message-content").appendChild(productContainer);
+      }
+
+      // ✅ Append final message to chat box
+      this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
+      this.scrollToBottom();
+    }
+
 
       addErrorMessage(errorText) {
         const div = document.createElement("div");
@@ -586,7 +674,7 @@
         contentDiv.className = "message-content";
 
         const text = document.createElement("div");
-        text.textContent = content;
+        text.innerHTML = content;
 
         const time = document.createElement("div");
         time.className = "message-time";

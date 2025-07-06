@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from shortuuid.django_fields import ShortUUIDField
 from django.utils import timezone
+from django.db.models import JSONField
 import json
 
 class ChatSession(models.Model):
@@ -11,6 +12,7 @@ class ChatSession(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
+    metadata = JSONField(default=dict, blank=True)
     
     class Meta:
         verbose_name_plural = "Chat Sessions"

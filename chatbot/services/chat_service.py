@@ -374,6 +374,7 @@
 
 from typing import Dict, Any, List, Optional
 from django.db.models import Q
+from requests import session
 from core.models import Product, CartOrder, CartOrderProducts, Category
 from chatbot.models import ChatSession, ChatMessage
 from chatbot.v2.serializers import ProductSerializer, OrderSerializer
@@ -442,106 +443,195 @@ class ChatService:
                 return ChatSession.objects.get(session_id=session_id, is_active=True)
             except ChatSession.DoesNotExist:
                 pass
-
         return ChatSession.objects.create(user_id=user_id if user_id else None)
 
     def _generate_response(self, message: str, intent: str, entities: Dict[str, Any], session: ChatSession) -> Dict[str, Any]:
-        if intent == 'product_search':
-            return self._handle_product_search(message, entities, session)
-        elif intent == 'order_inquiry':
-            return self._handle_order_inquiry(message, entities, session)
-        elif intent == 'stock_inquiry':
-            return self._handle_stock_inquiry(message, entities, session)
-        elif intent == 'category_browse':
-            return self._handle_category_browse(message, entities, session)
-        elif intent == 'help_request':
-            return self._handle_help_request(message, entities, session)
-        elif intent == 'return_policy':
-            return self._handle_return_policy(message, entities, session)
+        try:
+            if message.strip().lower() == "show more products":
+                return self._search_products_by_entities(message, {}, session)
+
+            if intent == 'product_search':
+                return self._handle_product_search(message, entities, session)
+            elif intent == 'order_inquiry':
+                return self._handle_order_inquiry(message, entities, session)
+            elif intent == 'stock_inquiry':
+                return self._handle_stock_inquiry(message, entities, session)
+            elif intent == 'category_browse':
+                return self._handle_category_browse(message, entities, session)
+            elif intent == 'help_request':
+                return self._handle_help_request(message, entities, session)
+            elif intent == 'return_policy':
+                return self._handle_return_policy(message, entities, session)
+            elif intent == 'popular_items':
+                return self._handle_popular_items(message, entities, session)
+            elif intent == 'price_inquiry':
+                return self._handle_price_inquiry(message, entities, session)
+            else:
+                return self._handle_general_inquiry(message, entities, session)
+
+        except Exception as e:
+            print("[Chatbot ERROR]", e)
+            return {
+                "message": "Sorry, I encountered an error processing your request. Please try again.",
+                "suggestions": ["Browse categories", "Search again"]
+            }
+
+    # def _handle_product_search(self, message: str, entities: Dict[str, Any], session: ChatSession) -> Dict[str, Any]:
+    #     query = Q(product_status='published', status=True)
+    #     search_terms = []
+
+    #     if entities.get('colors'):
+    #         search_terms.extend(entities['colors'])
+    #     if entities.get('categories'):
+    #         search_terms.extend(entities['categories'])
+    #     if entities.get('brands'):
+    #         search_terms.extend(entities['brands'])
+
+    #     if not search_terms:
+    #         search_terms = message.split()
+
+    #     for term in search_terms:
+    #         matched_category = Category.objects.filter(title__icontains=term).first()
+    #         if matched_category:
+    #             return {
+    #                 'message': f"I found the category '{matched_category.title}'. Click below to browse all products.",
+    #                 'data': {
+    #                     'category': {
+    #                         'id': matched_category.cid,
+    #                         'title': matched_category.title,
+    #                         'product_count': matched_category.product_count(),
+    #                         'url': f"/category/{matched_category.cid}/shop-product-right.html"
+    #                     }
+    #                 },
+    #                 'suggestions': [
+    #                     f"Browse {matched_category.title}",
+    #                     "Search again",
+    #                     "Get deals on this category"
+    #                 ]
+    #             }
+
+    #     for term in search_terms:
+    #         query &= (
+    #             Q(title__icontains=term) |
+    #             Q(description__icontains=term) |
+    #             Q(tags__name__icontains=term) |
+    #             Q(category__title__icontains=term)
+    #         )
+
+    #     products = Product.objects.filter(query).distinct()[:10]
+
+    #     from core.models import ProductQuery
+    #     ProductQuery.objects.create(
+    #         session=session,
+    #         query_text=message,
+    #         extracted_entities=entities,
+    #         results_count=products.count()
+    #     )
+
+    #     if products.exists():
+    #         serialized_products = ProductSerializer(products, many=True).data
+    #         context = {
+    #             'intent': 'product_search',
+    #             'entities': entities,
+    #             'products': serialized_products
+    #         }
+    #         llm_response = self.llm_service.generate_response(message, context)
+    #         return {
+    #             'message': llm_response if llm_response else f"I found {products.count()} products that match your search. Let me show you the results.",
+    #             'data': {
+    #                 'products': serialized_products
+    #             },
+    #             'suggestions': [
+    #                 "Show more products",
+    #                 "Filter by price",
+    #                 "Check availability",
+    #                 "Show similar items"
+    #             ]
+    #         }
+    #     else:
+    #         return {
+    #             'message': "I couldn't find any products matching your search. Try different keywords or browse our categories.",
+    #             'suggestions': [
+    #                 "Browse categories",
+    #                 "Show popular items",
+    #                 "Search again"
+    #             ]
+    #         }
+    
+    def _handle_product_search(self, message, entities, session):
+        from core.models import Product
+        from django.db.models import Q
+
+        limit = 4
+        is_show_more = message.strip().lower() == "show more products"
+
+        if not isinstance(session.metadata, dict):
+            session.metadata = {}
+
+        if not is_show_more:
+            products = entities.get("products") or []
+            colors = entities.get("colors") or []
+            categories = entities.get("categories") or []
+            brands = entities.get("brands") or []
+
+            session.metadata["product_search_terms"] = (
+                products + colors + categories + brands
+            ) or message.split()
+            session.metadata["shown_product_count"] = 0
+
+        search_terms = session.metadata.get("product_search_terms", [])
+        shown = session.metadata.get("shown_product_count", 0)
+
+        query = Q(product_status="published", status=True)
+
+        if entities.get('products'):  # Try exact product title first
+            for product_title in entities['products']:
+                query &= Q(title__iexact=product_title)
         else:
-            return self._handle_general_inquiry(message, entities, session)
+            for term in search_terms:
+                query &= (
+                    Q(title__icontains=term) |
+                    Q(description__icontains=term) |
+                    Q(tags__name__icontains=term) |
+                    Q(category__title__icontains=term)
+                )
 
-    def _handle_product_search(self, message: str, entities: Dict[str, Any], session: ChatSession) -> Dict[str, Any]:
-        query = Q(product_status='published', status=True)
-        search_terms = []
+        all_products = Product.objects.filter(query).distinct()
 
-        if entities.get('colors'):
-            search_terms.extend(entities['colors'])
-        if entities.get('categories'):
-            search_terms.extend(entities['categories'])
-        if entities.get('brands'):
-            search_terms.extend(entities['brands'])
-
-        if not search_terms:
-            search_terms = message.split()
-
-        for term in search_terms:
-            matched_category = Category.objects.filter(title__icontains=term).first()
-            if matched_category:
-                return {
-                    'message': f"I found the category '{matched_category.title}'. Click below to browse all products.",
-                    'data': {
-                        'category': {
-                            'id': matched_category.cid,
-                            'title': matched_category.title,
-                            'product_count': matched_category.product_count(),
-                            'url': f"/category/{matched_category.cid}/shop-product-right.html"
-                        }
-                    },
-                    'suggestions': [
-                        f"Browse {matched_category.title}",
-                        "Search again",
-                        "Get deals on this category"
-                    ]
-                }
-
-        for term in search_terms:
-            query &= (
-                Q(title__icontains=term) |
-                Q(description__icontains=term) |
-                Q(tags__name__icontains=term) |
-                Q(category__title__icontains=term)
-            )
-
-        products = Product.objects.filter(query).distinct()[:10]
-
-        from ..models import ProductQuery
-        ProductQuery.objects.create(
-            session=session,
-            query_text=message,
-            extracted_entities=entities,
-            results_count=products.count()
-        )
+        total_products = all_products.count()
+        products = all_products[shown:shown + limit]
 
         if products.exists():
-            serialized_products = ProductSerializer(products, many=True).data
-            context = {
-                'intent': 'product_search',
-                'entities': entities,
-                'products': serialized_products
-            }
-            llm_response = self.llm_service.generate_response(message, context)
+            serialized = ProductSerializer(products, many=True).data
+
+            session.metadata["shown_product_count"] = shown + len(products)
+            session.save()
+
+            response_text = (
+                f"🛍️ I found {total_products} product(s). Here are some:"
+                if shown == 0 else
+                "🧾 Here are more products you might like:"
+            )
+
+            suggestions = (
+                ["Show more products"] if session.metadata["shown_product_count"] < total_products
+                else ["🗂️ Browse categories", "More Products", "📞 Get help"]
+            )
+
             return {
-                'message': llm_response if llm_response else f"I found {products.count()} products that match your search. Let me show you the results.",
-                'data': {
-                    'products': serialized_products
-                },
-                'suggestions': [
-                    "Show more products",
-                    "Filter by price",
-                    "Check availability",
-                    "Show similar items"
-                ]
+                "message": response_text,
+                "data": {"products": serialized},
+                "suggestions": suggestions
             }
-        else:
-            return {
-                'message': "I couldn't find any products matching your search. Try different keywords or browse our categories.",
-                'suggestions': [
-                    "Browse categories",
-                    "Show popular items",
-                    "Search again"
-                ]
-            }
+
+        return {
+            "message": "❗ No matching products found. Please try another keyword or browse categories.",
+            "suggestions": ["🗂️ Browse categories", "📞 Get help"]
+        }
+        
+        
+
+
 
     def _handle_order_inquiry(self, message: str, entities: Dict[str, Any], session: ChatSession) -> Dict[str, Any]:
         order_ids = entities.get('order_ids', [])
@@ -552,7 +642,7 @@ class ChatService:
                 'suggestions': [
                     "Enter order ID",
                     "Check recent orders",
-                    "Contact support"
+                    "📞 Get help"
                 ]
             }
 
@@ -583,7 +673,8 @@ class ChatService:
                 'suggestions': [
                     "Track package",
                     "Contact support",
-                    "Order again"
+                    "Order again",
+                    "📞 Get help"
                 ]
             }
         else:
@@ -592,7 +683,8 @@ class ChatService:
                 'suggestions': [
                     "Try different order ID",
                     "Contact support",
-                    "Check email confirmation"
+                    "Check email confirmation",
+                    "📞 Get help"
                 ]
             }
 
@@ -629,7 +721,8 @@ class ChatService:
                 'suggestions': [
                     "Show in-stock items only",
                     "Notify when available",
-                    "Find alternatives"
+                    "Find alternatives",
+                    "📞 Get help"
                 ]
             }
         else:
@@ -638,29 +731,37 @@ class ChatService:
                 'suggestions': [
                     "Search for product",
                     "Browse categories",
-                    "Show popular items"
+                    "Show popular items",
+                    "📞 Get help"
                 ]
             }
 
-    def _handle_category_browse(self, message: str, entities: Dict[str, Any], session: ChatSession) -> Dict[str, Any]:
-        categories = Category.objects.all()
-        category_data = []
+    def _handle_category_browse(self, message, entities, session):
+        try:
+            from core.models import Category
+            categories = Category.objects.all()
 
-        for category in categories:
-            if category.product_count() > 0:
-                category_data.append({
-                    'id': category.cid,
-                    'title': category.title,
-                    'product_count': category.product_count(),
-                })
+            if not categories.exists():
+                return {
+                    "message": "❗ No categories available at the moment.",
+                    "suggestions": ["Search products", "Help"]
+                }
 
-        return {
-            'message': "Here are our available product categories:",
-            'data': {
-                'categories': category_data
-            },
-            'suggestions': [f"Browse {cat['title']}" for cat in category_data[:5]]
-        }
+            # Use set to prevent duplicates
+            suggestions = list(set([f"Show {cat.title.strip()}" for cat in categories]))[:6]
+
+            return {
+                "message": "🗂️ Here are our available product categories:",
+                "suggestions": suggestions
+            }
+
+        except Exception as e:
+            print("[Chatbot] Category browse error:", e)
+            return {
+                "message": "⚠️ Could not load categories. Please try again later.",
+                "suggestions": ["Search products", "Help"]
+            }
+
 
     def _handle_help_request(self, message: str, entities: Dict[str, Any], session: ChatSession) -> Dict[str, Any]:
         """Handle help and support requests"""
@@ -670,21 +771,23 @@ class ChatService:
 
         return {
             'message': (
-                f"👋 Hi {user_name}! I'm your shopping assistant.\n\n"
-                "Here’s how I can help you today:\n"
-                "🔍 Find products and check availability\n"
-                "📦 Track your orders and delivery status\n"
-                "🗂️ Browse product categories\n"
-                "💸 Check prices and ongoing deals\n"
-                "❓ Answer general shopping questions\n\n"
-                "What would you like help with?"
+                f"👋 Hi {user_name}! I'm your shopping assistant. <br>"
+                "🤖 Here’s how I can help you today: <br><br>"
+                
+                "📞 <b>You can reach our support team anytime:</b> <br>"
+                '📧 Email: <a href="mailto:support@example.com" style="color:#3366cc; text-decoration:underline;">support@example.com</a><br>'
+                '💬 WhatsApp: <a href="https://wa.me/923001234567" target="_blank" style="color:#3366cc;">+92 300 1234567</a><br>'
+                '🌐 Help Center: <a href="/contact/" target="_blank" style="color:#3366cc;">Visit here</a><br>'
+
+                "🕒 Hours: Mon–Fri, 9am–6pm (PKT) <br><br>"
+                
+                "❓ You can also ask general shopping questions or try options below: <br>"
             ),
             'suggestions': [
-                "Find products",
-                "Track my order",
-                "Browse categories",
-                "Check deals",
-                "Contact support"
+                "🔍 Find products",
+                "📦 Track my order",
+                "🗂️ Browse categories",
+                "💸 Check deals",
             ]
         }
 
@@ -712,9 +815,23 @@ class ChatService:
                 "🔍 Search products",
                 "📦 Track order",
                 "🗂️ Browse categories",
-                "💬 Get help"
+                "📞 Get help"
             ]
 
+        }
+        
+    def _handle_price_inquiry(self, message, entities, session):
+        products = self._search_products_by_entities(entities, message)
+        if products.exists():
+            serialized = ProductSerializer(products, many=True).data
+            return {
+                'message': "Here are the prices for your requested products:",
+                'data': {'products': serialized},
+                'suggestions': ["Sort by price", "Search again"]
+            }
+        return {
+            'message': "No price-related products found.",
+            'suggestions': ["🔍 Search products"]
         }
 
     def _search_products_by_entities(self, entities: Dict[str, Any], fallback_text: str = "") -> Any:
@@ -764,19 +881,18 @@ class ChatService:
                     'products': serialized
                 },
                 'suggestions': [
-                    "Show more popular items",
-                    "Filter by price",
-                    "Browse categories",
-                    "Contact support"
+                    "🗂️ Browse categories",
+                    "📞 Get help"
                 ]
             }
         else:
             return {
                 'message': "I couldn't find popular products at the moment. Try searching for something specific.",
                 'suggestions': [
-                    "Search products",
-                    "Browse categories",
-                    "Check deals"
+                    "🔍 Search products",
+                    "🗂️ Browse categories",
+                    "🛍️ Check deals",
+                    "📞 Get help"
                 ]
             }
     
@@ -784,18 +900,19 @@ class ChatService:
         """Provide return policy information"""
         return {
             'message': (
-                "🔁 Our Return Policy:\n\n"
-                "• You can return items within **7 days** of delivery.\n"
-                "• Items must be unused, in original packaging.\n"
-                "• To initiate a return, go to your order history and click 'Request Return'.\n"
-                "• For more details, please visit our [Return Policy page](https://yourwebsite.com/returns).\n\n"
+                "🔁 Our Return Policy: <br>"
+                "• You can return items within **7 days** of delivery. <br>"
+                "• Items must be unused, in original packaging. <br>"
+                "• To initiate a return, go to your order history and click 'Request Return'. <br>"
+                "• For more details, please visit our [Return Policy page](https://yourwebsite.com/returns). <br>"
                 "Would you like help returning a product or tracking an order?"
             ),
             'suggestions': [
                 "Return a product",
                 "Track my order",
                 "Contact support",
-                "Go to homepage"
+                "Go to homepage",
+                "📞 Get help"
             ],
             'data': {}
         }

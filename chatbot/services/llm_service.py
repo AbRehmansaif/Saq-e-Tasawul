@@ -196,7 +196,7 @@ class LLMService:
     def _build_system_prompt(self, context: Dict[str, Any]) -> str:
         """Build system prompt based on context"""
         base_prompt = (
-            "You are an intelligent and friendly AI-powered shopping assistant for a modern e-commerce website, developed by Dev Rehman. "
+            "You are an intelligent and friendly AI-powered shopping assistant for a modern e-commerce website, developed by Saq-e-Tasawul. "
             "Your main purpose is to help customers navigate the online store, discover products, track their orders, check stock availability, "
             "browse categories, and answer common questions related to shopping.\n\n"
 
