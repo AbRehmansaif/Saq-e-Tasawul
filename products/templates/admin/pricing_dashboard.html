@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dynamic Pricing Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 10px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-success {
+            background: #51cf66;
+            color: white;
+        }
+        .btn-warning {
+            background: #ff8c00;
+            color: white;
+        }
+        .btn-info {
+            background: #339af0;
+            color: white;
+        }
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 0.875em;
+        }
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        .products-table, .changes-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .table-header {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .table-header h3 {
+            margin: 0;
+            color: #495057;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+        .price-cell {
+            font-weight: bold;
+            font-family: monospace;
+        }
+        .demand-high {
+            color: #51cf66;
+            font-weight: bold;
+        }
+        .demand-low {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        .demand-normal {
+            color: #ffd43b;
+            font-weight: bold;
+        }
+        .price-increase {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+        .price-decrease {
+            background: #ffe0e6;
+            color: #c92a2a;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background: white;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            z-index: 1001;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .notification.success {
+            background: #51cf66;
+        }
+        .notification.error {
+            background: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>🎯 Dynamic Pricing Dashboard</h1>
+            <p>AI-powered step-wise pricing based on supply and demand</p>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-products">0</div>
+                <div class="stat-label">Total Products</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="recent-changes">0</div>
+                <div class="stat-label">Recent Price Changes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="high-demand-count">0</div>
+                <div class="stat-label">High Demand Products</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avg-price">$0.00</div>
+                <div class="stat-label">Average Price</div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="updateAllPrices()">
+                🔄 Update All Prices
+            </button>
+            <button class="btn btn-success" onclick="trainModel()">
+                🤖 Train ML Model
+            </button>
+            <button class="btn btn-info" onclick="exportData()">
+                📊 Export Data
+            </button>
+            <button class="btn btn-warning" onclick="manageProducts()">
+                📝 Manage Products
+            </button>
+        </div>
+
+        <!-- Products Table -->
+        <div class="products-table">
+            <div class="table-header">
+                <h3>🛍️ Product Pricing Overview</h3>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Current Price</th>
+                        <th>Price Range</th>
+                        <th>Weekly Sales</th>
+                        <th>Demand Status</th>
+                        <th>Stock</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="products-tbody">
+                    <!-- Products will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recent Price Changes -->
+        <div class="changes-table">
+            <div class="table-header">
+                <h3>📈 Recent Price Changes</h3>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Old Price</th>
+                        <th>New Price</th>
+                        <th>Change</th>
+                        <th>Sales</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="changes-tbody">
+                    <!-- Price changes will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loadingModal" class="modal">
+        <div class="modal-content">
+            <div class="loading"></div>
+            <p id="loadingText">Processing...</p>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // Get data from Django context
+        const productsData = JSON.parse('{{ products_json|escapejs }}' || '[]');
+        const changesData = JSON.parse('{{ changes_json|escapejs }}' || '[]');
+        const stats = {
+            total_products: parseInt('{{ stats.total_products|default:0 }}'),
+            high_demand: parseInt('{{ stats.high_demand|default:0 }}'),
+            recent_changes_count: changesData.length
+        };
+
+        // Calculate and display statistics
+        function updateStats() {
+            document.getElementById('total-products').textContent = stats.total_products || 0;
+            document.getElementById('recent-changes').textContent = stats.recent_changes_count || 0;
+            document.getElementById('high-demand-count').textContent = stats.high_demand || 0;
+            
+            // Calculate average price from products data
+            if (productsData.length > 0) {
+                const avgPrice = productsData.reduce((sum, p) => sum + p.selling_price, 0) / productsData.length;
+                document.getElementById('avg-price').textContent = '$' + avgPrice.toFixed(2);
+            } else {
+                document.getElementById('avg-price').textContent = '$0.00';
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Show loading modal
+        function showLoading(text = 'Processing...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingModal').style.display = 'block';
+        }
+
+        // Hide loading modal
+        function hideLoading() {
+            document.getElementById('loadingModal').style.display = 'none';
+        }
+
+        // Populate products table
+        function populateProductsTable() {
+            const tbody = document.getElementById('products-tbody');
+            tbody.innerHTML = '';
+
+            productsData.forEach((product, index) => {
+                const demandStatus = getDemandStatus(product);
+                const stockStatus = getStockStatus(product);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <strong>${product.title}</strong>
+                        <br><small>ID: ${index + 1}</small>
+                    </td>
+                    <td class="price-cell">$${product.selling_price.toFixed(2)}</td>
+                    <td>
+                        <small>$${product.base_price.toFixed(2)} - $${product.max_price.toFixed(2)}</small>
+                    </td>
+                    <td>
+                        <strong>${product.weekly_sales}</strong>
+                        <br><small>Last week: ${product.last_week_sales}</small>
+                    </td>
+                    <td>${demandStatus}</td>
+                    <td>${stockStatus}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="updatePrice(${product.id}, '${product.title.replace(/'/g, "\\'")}')">
+                            Update Price
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Populate price changes table
+        function populatePriceChangesTable() {
+            const tbody = document.getElementById('changes-tbody');
+            tbody.innerHTML = '';
+
+            changesData.forEach(change => {
+                const priceDiff = change.new_price - change.old_price;
+                const changeClass = priceDiff > 0 ? 'price-increase' : 'price-decrease';
+                const changeSymbol = priceDiff > 0 ? '↗️' : '↘️';
+                const changeText = priceDiff > 0 ? `+${priceDiff.toFixed(2)}` : `${priceDiff.toFixed(2)}`;
+                
+                const timeAgo = getTimeAgo(change.timestamp);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${change.product_title}</td>
+                    <td class="price-cell">$${change.old_price.toFixed(2)}</td>
+                    <td class="price-cell">$${change.new_price.toFixed(2)}</td>
+                    <td class="${changeClass}">
+                        ${changeText} ${changeSymbol}
+                    </td>
+                    <td>-</td>
+                    <td>${timeAgo}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Helper function to determine demand status
+        function getDemandStatus(product) {
+            if (product.weekly_sales > product.demand_high) {
+                return '<span class="demand-high">🔥 High</span>';  
+            } else if (product.weekly_sales < product.demand_low) {
+                return '<span class="demand-low">❄️ Low</span>';
+            } else {
+                return '<span class="demand-normal">📊 Normal</span>';
+            }
+        }
+
+        // YOUR REQUESTED VERSION - Stock status
+        function getStockStatus(product) {
+            if (product.in_stock) {
+                return `<span style="color: green;">✅ ${product.stock_count}</span>`;
+            } else {
+                return '<span style="color: red;">❌ Out of Stock</span>';
+            }
+        }
+
+        // Helper to show time since change
+        function getTimeAgo(timestamp) {
+            const now = new Date();
+            const changeDate = new Date(timestamp);
+            const diffSeconds = Math.floor((now - changeDate) / 1000);
+            
+            if (diffSeconds < 60) return `${diffSeconds} seconds ago`;
+            if (diffSeconds < 3600) return `${Math.floor(diffSeconds/60)} minutes ago`;
+            if (diffSeconds < 86400) return `${Math.floor(diffSeconds/3600)} hours ago`;
+            return `${Math.floor(diffSeconds/86400)} days ago`;
+        }
+
+            function updatePrice() {
+                window.open('/admin/products/product/', '_blank');
+            }
+
+        // Update single product price
+        // async function updatePrice(productId, productName) {
+        //     showLoading(`Updating price for ${productName}...`);
+            
+        //     try {
+        //         const response = await fetch(`/pricing/api/update/${productId}/`, {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json',
+        //                 'X-CSRFToken': getCookie('csrftoken')
+        //             }
+        //         });
+                
+        //         const data = await response.json();
+                
+        //         if (data.success) {
+        //             showNotification(
+        //                 `${data.product}: $${data.old_price.toFixed(2)} → $${data.new_price.toFixed(2)}`,
+        //                 'success'
+        //             );
+        //             setTimeout(() => location.reload(), 1500);
+        //         } else {
+        //             showNotification(`Error: ${data.error}`, 'error');
+        //         }
+        //     } catch (error) {
+        //         showNotification(`Error: ${error.message}`, 'error');
+        //     } finally {
+        //         hideLoading();
+        //     }
+        // }
+
+        // Update all prices
+        async function updateAllPrices() {
+            if (!confirm('Update prices for all products?')) {
+                return;
+            }
+            
+            showLoading('Updating all prices...');
+            
+            try {
+                const productIds = productsData.map(p => p.id);
+                const response = await fetch('/pricing/api/bulk-update/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ product_ids: productIds })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const successCount = data.results.filter(r => r.success).length;
+                    showNotification(`${successCount} products updated!`, 'success');
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showNotification('Update failed', 'error');
+                }
+            } catch (error) {
+                showNotification(`Error: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Train ML model
+        async function trainModel() {
+            if (!confirm('Train the ML model? This will take several minutes.')) {
+                return;
+            }
+            
+            showLoading('Training ML model... This may take a few minutes.');
+            
+            try {
+                // Simulate API call to train model
+                const response = await fetch('/pricing/api/train-model/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('ML model trained successfully!', 'success');
+                } else {
+                    showNotification(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showNotification(`Error: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Export data function
+        // Update exportData function
+        function exportData() {
+            showLoading('Preparing export...');
+            
+            // Create a temporary link to trigger download
+            const link = document.createElement('a');
+            link.href = '/pricing/export-data/';
+            link.download = 'pricing_data.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showNotification('Data exported successfully!', 'success');
+            hideLoading();
+        }
+
+        // Update manageProducts function
+        function manageProducts() {
+            window.open('/admin/products/product/', '_blank');
+        }
+
+        // Get CSRF token (for Django compatibility)
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('loadingModal');
+            if (event.target === modal) {
+                hideLoading();
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            populateProductsTable();
+            populatePriceChangesTable();
+            
+            const errorMessage = "{{ error_message|escapejs }}";
+    
+            if (errorMessage) {
+                showNotification(errorMessage, 'error');
+            } else {
+                showNotification('Dashboard loaded successfully!', 'success');
+            }
+        });
+
+        // Auto-refresh every 5 minutes (optional)
+        // setInterval(() => {
+        //     location.reload();
+        // }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pricing Analytics</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .analytics-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #495057;
+        }
+        .stats-summary {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .summary-item {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .summary-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .summary-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        .recent-changes {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 30px;
+        }
+        .changes-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .change-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .change-item:last-child {
+            border-bottom: none;
+        }
+        .price-change {
+            font-weight: bold;
+        }
+        .price-increase {
+            color: #28a745;
+        }
+        .price-decrease {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="analytics-container">
+        <div class="header">
+            <h1>📊 Pricing Analytics Dashboard</h1>
+            <p>Comprehensive insights into your dynamic pricing performance</p>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="stats-summary">
+            <h2>📈 Key Metrics</h2>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-number">{{ stats.total_products }}</div>
+                    <div class="summary-label">Total Products</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-number">{{ stats.high_demand }}</div>
+                    <div class="summary-label">High Demand</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-number">{{ stats.low_demand }}</div>
+                    <div class="summary-label">Low Demand</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-number" id="avg-margin">0%</div>
+                    <div class="summary-label">Avg Margin</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">📊 Sales vs Price Distribution</div>
+                <canvas id="salesPriceChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">📈 Price Trend Analysis</div>
+                <canvas id="priceTrendChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">🎯 Demand Categories</div>
+                <canvas id="demandChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">💰 Revenue Optimization</div>
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Price Changes -->
+        <div class="recent-changes">
+            <h2>🔄 Recent Price Changes</h2>
+            <div class="changes-list" id="recent-changes-list">
+                <!-- Changes will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Django template script tags for JSON data -->
+    {{ products_json|json_script:"products-data" }}
+    {{ changes_json|json_script:"changes-data" }}
+
+    <script>
+        // Get data from Django context
+        const products = JSON.parse(document.getElementById('products-data').textContent);
+        const recentChanges = JSON.parse(document.getElementById('changes-data').textContent);
+        
+        // Calculate and display average margin
+        const totalRevenue = products.reduce((sum, p) => sum + (p.selling_price * p.weekly_sales), 0);
+        const totalCost = products.reduce((sum, p) => sum + (p.base_price * p.weekly_sales), 0);
+        const avgMargin = totalCost > 0 ? ((totalRevenue - totalCost) / totalRevenue * 100).toFixed(1) : 0;
+        document.getElementById('avg-margin').textContent = avgMargin + '%';
+
+        // Populate recent changes
+        const changesContainer = document.getElementById('recent-changes-list');
+        if (recentChanges.length === 0) {
+            changesContainer.innerHTML = '<p>No recent price changes found.</p>';
+        } else {
+            recentChanges.forEach(change => {
+                const changeElement = document.createElement('div');
+                changeElement.className = 'change-item';
+                
+                const priceChange = change.new_price - change.old_price;
+                const changeClass = priceChange > 0 ? 'price-increase' : 'price-decrease';
+                const changeSymbol = priceChange > 0 ? '↗' : '↘';
+                
+                changeElement.innerHTML = `
+                    <div>
+                        <strong>${change.product_title}</strong><br>
+                        <small>${new Date(change.timestamp).toLocaleString()}</small>
+                    </div>
+                    <div class="price-change ${changeClass}">
+                        $${change.old_price.toFixed(2)} ${changeSymbol} $${change.new_price.toFixed(2)}
+                    </div>
+                `;
+                
+                changesContainer.appendChild(changeElement);
+            });
+        }
+
+        // Chart 1: Sales vs Price Scatter Plot
+        const ctx1 = document.getElementById('salesPriceChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Products',
+                    data: products.map(p => ({
+                        x: p.selling_price,
+                        y: p.weekly_sales
+                    })),
+                    backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 2,
+                    pointRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Selling Price ($)',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Weekly Sales',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const product = products[context.dataIndex];
+                                return `${product.title}: $${context.parsed.x.toFixed(2)}, ${context.parsed.y} sales`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Chart 2: Price Trend Analysis (Current vs Base vs Max)
+        const ctx2 = document.getElementById('priceTrendChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: products.map(p => p.title.length > 12 ? p.title.substring(0, 12) + '...' : p.title),
+                datasets: [{
+                    label: 'Base Price',
+                    data: products.map(p => p.base_price),
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'Current Price',
+                    data: products.map(p => p.selling_price),
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'Max Price',
+                    data: products.map(p => p.max_price),
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Products',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Price ($)',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+
+        // Chart 3: Demand Categories Pie Chart
+        const highDemand = products.filter(p => p.weekly_sales > p.demand_high).length;
+        const lowDemand = products.filter(p => p.weekly_sales < p.demand_low).length;
+        const normalDemand = products.length - highDemand - lowDemand;
+
+        const ctx3 = document.getElementById('demandChart').getContext('2d');
+        new Chart(ctx3, {
+            type: 'doughnut',
+            data: {
+                labels: ['High Demand', 'Normal Demand', 'Low Demand'],
+                datasets: [{
+                    data: [highDemand, normalDemand, lowDemand],
+                    backgroundColor: [
+                        'rgba(81, 207, 102, 0.8)',
+                        'rgba(255, 212, 59, 0.8)',
+                        'rgba(255, 107, 107, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(81, 207, 102, 1)',
+                        'rgba(255, 212, 59, 1)',
+                        'rgba(255, 107, 107, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((context.parsed * 100) / total).toFixed(1) : 0;
+                                return `${context.label}: ${context.parsed} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Chart 4: Revenue Optimization
+        const ctx4 = document.getElementById('revenueChart').getContext('2d');
+        new Chart(ctx4, {
+            type: 'bar',
+            data: {
+                labels: products.map(p => p.title.length > 12 ? p.title.substring(0, 12) + '...' : p.title),
+                datasets: [{
+                    label: 'Current Revenue',
+                    data: products.map(p => p.selling_price * p.weekly_sales),
+                    backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'Max Potential Revenue',
+                    data: products.map(p => p.max_price * p.weekly_sales),
+                    backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Products',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Revenue ($)',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Set chart heights
+        document.querySelectorAll('canvas').forEach(canvas => {
+            canvas.style.height = '300px';
+        });
+    </script>
+</body>
+</html>
