@@ -108,16 +108,6 @@
                             <form action="{% url 'core:search' %}" method="GET">
                                 <select class="select-active">
                                     <option>All Categories</option>
-                                    <option>Milks and Dairies</option>
-                                    <option>Wines & Alcohol</option>
-                                    <option>Clothing & Beauty</option>
-                                    <option>Pet Foods & Toy</option>
-                                    <option>Fast food</option>
-                                    <option>Baking material</option>
-                                    <option>Vegetables</option>
-                                    <option>Fresh Seafood</option>
-                                    <option>Noodles & Rice</option>
-                                    <option>Ice cream</option>
                                 </select>
                                 <input type="text" placeholder="Search for items..." name="q" />
                                 <button class="material-symbols-outlined" type="submit"><span class="material-symbols-outlined">search</span></button>
@@ -212,7 +202,7 @@
                         <div class="main-menu main-menu-padding-1 main-menu-lh-2 d-none d-lg-block font-heading">
                             <nav>
                                 <ul>
-                                    <li class="hot-deals"><img src="{% static 'assets/imgs/theme/icons/icon-hot.svg' %}" alt="hot deals" /><a href="{% url 'core:product-list' %}">Deals</a></li>
+                                    <!-- <li class="hot-deals"><img src="{% static 'assets/imgs/theme/icons/icon-hot.svg' %}" alt="hot deals" /><a href="{% url 'core:product-list' %}">Deals</a></li> -->
                                     <li>
                                         <a class="active" href="{% url 'core:index' %}">Home</a>
 
@@ -610,7 +600,6 @@
                         <h4 class="widget-title">Orders & Payments</h4>
                         <ul class="footer-list mb-sm-5 mb-md-0">
                             <li><a href="{% url 'core:cart' %}">Cart</a></li>
-                            <li><a href="{% url 'core:wishlist' %}">Wishlist</a></li>
                             <li><a href="{% url 'core:payment-failed' %}">Payment Failed</a></li>
                         </ul>
                     </div>
