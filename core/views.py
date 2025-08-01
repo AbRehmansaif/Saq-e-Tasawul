@@ -1,3 +1,40 @@
+def reduce_product_stock(order):
+    """Reduce stock_count for each product in the order."""
+    order_items = CartOrderProducts.objects.filter(order=order)
+    for item in order_items:
+        try:
+            product = Product.objects.get(title=item.item)
+            # Convert stock_count to int, reduce, and save
+            if product.stock_count is not None:
+                try:
+                    stock = int(product.stock_count)
+                except Exception:
+                    stock = 0
+                stock -= int(item.qty)
+                product.stock_count = str(max(stock, 0))
+                # Optionally set in_stock to False if stock is 0
+                if stock <= 0:
+                    product.in_stock = False
+                product.save()
+        except Product.DoesNotExist:
+            continue
+
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+# Cash on Delivery payment view
+from django.utils.decorators import method_decorator
+
+@login_required
+@csrf_exempt
+def payment_cod_view(request, oid):
+    order = CartOrder.objects.get(oid=oid)
+    if request.method == "POST":
+        order.payment_method = "COD"
+        order.save()
+        reduce_product_stock(order)
+        messages.success(request, "Your order has been placed successfully with Cash on Delivery.")
+        return redirect("core:payment-completed", oid=oid)
+    return redirect("core:checkout", oid=oid)
 
 from django.http import JsonResponse
 from django.shortcuts import redirect, render, get_object_or_404
@@ -460,6 +497,7 @@ def payment_completed_view(request, oid):
     if order.paid_status == False:
         order.paid_status = True
         order.save()
+        reduce_product_stock(order)
         
     context = {
         "order": order,
@@ -520,6 +558,7 @@ def order_detail(request, id):
 
     
     context = {
+        "order": order,
         "order_items": order_items,
     }
     return render(request, 'core/order-detail.html', context)
@@ -612,12 +651,23 @@ def ajax_contact_form(request):
     subject = request.GET['subject']
     message = request.GET['message']
 
+
     contact = ContactUs.objects.create(
         full_name=full_name,
         email=email,
         phone=phone,
         subject=subject,
         message=message,
+    )
+
+    # Send email to admin
+    from django.core.mail import send_mail
+    send_mail(
+        subject=f"Contact Form: {subject}",
+        message=f"Name: {full_name}\nEmail: {email}\nPhone: {phone}\nMessage: {message}",
+        from_email=None,  # Use DEFAULT_FROM_EMAIL
+        recipient_list=["abdulrehmanarain713@gmail.com"],
+        fail_silently=True,
     )
 
     data = {

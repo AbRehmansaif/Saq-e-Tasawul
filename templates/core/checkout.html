@@ -80,6 +80,10 @@
 
                     <button type="button" class="btn w-100" id="checkout-button" style="background-color: blueviolet;">Pay With Stripe (Credit or Debit Card)</button>
                     <div id="paypal-button-container" class="mt-3"></div>
+                    <form method="POST" action="/payment-cod/{{ order.oid }}/">
+                        {% csrf_token %}
+                        <button type="submit" class="btn w-100 mt-3" style="background-color: #ffc107; color: #222;">Cash on Delivery</button>
+                    </form>
                 </div>
             </div>
         </div>

@@ -10,7 +10,7 @@
             <p>Whole data about your business here</p>
         </div>
         <div>
-            <a href="#" class="btn btn-primary"><i class="text-muted material-icons md-post_add"></i>Create Product</a>
+            <a href="add-products/" class="btn btn-primary"><i class="text-muted material-icons md-post_add"></i>Create Product</a>
         </div>
     </div>
     <div class="row">
@@ -91,10 +91,12 @@
                                 <td>{{l.order_date}}</td>
                                 <td>${{l.price}}</td>
                                 <td>
-                                    {% if l.paid_status == True %}
-                                    <span class="badge badge-pill badge-soft-success">Paid</span>
+                                    {% if l.payment_method == "COD" %}
+                                        <span class="badge badge-pill badge-warning">COD</span>
+                                    {% elif l.paid_status == True %}
+                                        <span class="badge badge-pill badge-soft-success">Paid</span>
                                     {% else %}
-                                    <span class="badge badge-pill badge-soft-danger">Not Paid</span>
+                                        <span class="badge badge-pill badge-soft-danger">Not Paid</span>
                                     {% endif %}
                                 </td>
                                 <td>

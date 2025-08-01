@@ -4,11 +4,11 @@ from django.urls import path
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import HttpResponse
-from products.models import Product, ProductSalesHistory, PriceChangeLog
+from core.models import Product, ProductSalesHistory, PriceChangeLog
 from products.ml.train_model import train_price_model
 import csv
 
-@admin.register(Product)
+
 class ProductAdmin(admin.ModelAdmin):
     list_display = [
         'title', 'base_price', 'max_price', 'selling_price', 

@@ -1,10 +1,33 @@
+# Standard and Django imports
+import json
+import io
+import pandas as pd
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils import timezone
+from django.db import models
+from core.models import Product, PriceChangeLog
+# --- ML Model Training API ---
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def train_ml_model(request):
+    """API endpoint to train the ML model (dummy implementation)"""
+    if request.method == 'POST':
+        # Simulate training process (replace with real logic as needed)
+        import time
+        time.sleep(2)  # Simulate delay
+        return JsonResponse({'success': True, 'message': 'ML model trained successfully!'})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
 import json
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
-from products.models import Product, PriceChangeLog
+from core.models import Product, PriceChangeLog
 
 
 @staff_member_required
@@ -20,6 +43,7 @@ def pricing_dashboard(request):
     stats = {
         'total_products': products.count(),
         'high_demand': products.filter(weekly_sales__gt=100).count(),  # Example threshold
+        'total_weekly_sales': products.aggregate(total=models.Sum('weekly_sales'))['total'] or 0,
     }
     
     # Prepare data for JavaScript
@@ -220,7 +244,6 @@ def pricing_analytics(request):
 
 # Optional: Add a bulk price update endpoint
 @staff_member_required 
-@csrf_exempt
 def bulk_price_update(request):
     """API endpoint to update prices for multiple products"""
     if request.method == 'POST':

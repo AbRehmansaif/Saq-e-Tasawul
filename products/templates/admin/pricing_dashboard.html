@@ -220,8 +220,8 @@
                 <div class="stat-label">High Demand Products</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number" id="avg-price">$0.00</div>
-                <div class="stat-label">Average Price</div>
+                <div class="stat-number" id="total-weekly-sales">0</div>
+                <div class="stat-label">Total Sales This Week</div>
             </div>
         </div>
 
@@ -232,9 +232,6 @@
             </button>
             <button class="btn btn-success" onclick="trainModel()">
                 🤖 Train ML Model
-            </button>
-            <button class="btn btn-info" onclick="exportData()">
-                📊 Export Data
             </button>
             <button class="btn btn-warning" onclick="manageProducts()">
                 📝 Manage Products
@@ -305,6 +302,7 @@
         const stats = {
             total_products: parseInt('{{ stats.total_products|default:0 }}'),
             high_demand: parseInt('{{ stats.high_demand|default:0 }}'),
+            total_weekly_sales: parseInt('{{ stats.total_weekly_sales|default:0 }}'),
             recent_changes_count: changesData.length
         };
 
@@ -313,14 +311,7 @@
             document.getElementById('total-products').textContent = stats.total_products || 0;
             document.getElementById('recent-changes').textContent = stats.recent_changes_count || 0;
             document.getElementById('high-demand-count').textContent = stats.high_demand || 0;
-            
-            // Calculate average price from products data
-            if (productsData.length > 0) {
-                const avgPrice = productsData.reduce((sum, p) => sum + p.selling_price, 0) / productsData.length;
-                document.getElementById('avg-price').textContent = '$' + avgPrice.toFixed(2);
-            } else {
-                document.getElementById('avg-price').textContent = '$0.00';
-            }
+            document.getElementById('total-weekly-sales').textContent = stats.total_weekly_sales || 0;
         }
 
         // Show notification
@@ -442,7 +433,7 @@
         }
 
             function updatePrice() {
-                window.open('/admin/products/product/', '_blank');
+                window.open('/admin/core/product/', '_blank');
             }
 
         // Update single product price
@@ -486,7 +477,7 @@
             
             try {
                 const productIds = productsData.map(p => p.id);
-                const response = await fetch('/pricing/api/bulk-update/', {
+                const response = await fetch('/dynamicPrice/api/bulk-update/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -543,26 +534,10 @@
             }
         }
 
-        // Export data function
-        // Update exportData function
-        function exportData() {
-            showLoading('Preparing export...');
-            
-            // Create a temporary link to trigger download
-            const link = document.createElement('a');
-            link.href = '/pricing/export-data/';
-            link.download = 'pricing_data.xlsx';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            showNotification('Data exported successfully!', 'success');
-            hideLoading();
-        }
 
         // Update manageProducts function
         function manageProducts() {
-            window.open('/admin/products/product/', '_blank');
+            window.open('/admin/core/product/', '_blank');
         }
 
         // Get CSRF token (for Django compatibility)

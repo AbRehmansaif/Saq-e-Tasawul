@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from products.models import Product
+from core.models import Product
 
 class Command(BaseCommand):
     help = 'Update prices for all products based on demand'

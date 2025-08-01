@@ -98,6 +98,31 @@
                                             </select>
                                         </div>
                                     </div>
+                                   <!-- Additional Product Fields -->
+                                   <div class="mb-4">
+                                       <label class="form-label" for="id_base_price">Base Price</label>
+                                       {{ form.base_price }}
+                                   </div>
+                                   <div class="mb-4">
+                                       <label class="form-label" for="id_max_price">Max Price</label>
+                                       {{ form.max_price }}
+                                   </div>
+                                   <div class="mb-4">
+                                       <label class="form-label" for="id_selling_price">Selling Price (Calculated)</label>
+                                       {{ form.selling_price }}
+                                   </div>
+                                   <div class="mb-4">
+                                       <label class="form-label" for="id_weekly_sales">Weekly Sales</label>
+                                       {{ form.weekly_sales }}
+                                   </div>
+                                   <div class="mb-4">
+                                       <label class="form-label" for="id_last_week_sales">Last Week Sales</label>
+                                       {{ form.last_week_sales }}
+                                   </div>
+                                   <div class="mb-4">
+                                       <label class="form-label" for="id_price_adjustment_step">Price Adjustment Step</label>
+                                       {{ form.price_adjustment_step }}
+                                   </div>
                                     <div class="mb-4">
                                         <label class="form-label">Type</label>
                                         {{form.type}}
