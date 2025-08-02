@@ -1,0 +1,223 @@
+<script>
+// --- Chatbot JS from chatbot_ui.html ---
+function addToCart(pid) {
+  const productCard = document.querySelector(`[data-pid="${pid}"]`);
+  const title = productCard?.getAttribute("data-title") || "Product";
+  const qty = 1;
+  const price = productCard?.getAttribute("data-price") || "0.00";
+  const image = productCard?.getAttribute("data-image") || "";
+  const id = productCard?.getAttribute("data-id") || pid;
+  const url = `/add-to-cart/?id=${id}&title=${encodeURIComponent(title)}&qty=${qty}&price=${price}&image=${encodeURIComponent(image)}&pid=${pid}`;
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      if (data.totalcartitems) {
+        chatBot.addBotMessage({ message: "🛒 Product added to your cart!" });
+      } else {
+        chatBot.addBotMessage({ message: "❌ Failed to add to cart." });
+      }
+    })
+    .catch(err => {
+      chatBot.addBotMessage({ message: "❌ Error adding to cart." });
+    });
+}
+
+class ChatBot {
+  constructor() {
+    this.sessionId = null;
+    this.isTyping = false;
+    this.messagesContainer = document.getElementById("chatMessages");
+    this.messageInput = document.getElementById("messageInput");
+    this.sendButton = document.getElementById("sendButton");
+    this.chatForm = document.getElementById("chatForm");
+    this.typingIndicator = document.getElementById("typingIndicator");
+    this.initializeEventListeners();
+    this.initSession();
+  }
+  getCSRFToken() {
+    const name = "csrftoken";
+    const cookies = document.cookie.split(";");
+    for (let cookie of cookies) {
+      const [key, value] = cookie.trim().split("=");
+      if (key === name) return decodeURIComponent(value);
+    }
+    return "";
+  }
+  initializeEventListeners() {
+    this.chatForm.addEventListener("submit", this.handleSubmit.bind(this));
+    this.messageInput.addEventListener("keypress", this.handleKeyPress.bind(this));
+  }
+  handleSubmit(e) {
+    e.preventDefault();
+    const message = this.messageInput.value.trim();
+    if (message && !this.isTyping) {
+      this.sendMessage(message);
+    }
+  }
+  handleKeyPress(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      this.handleSubmit(e);
+    }
+  }
+  async initSession() {
+    try {
+      const res = await fetch("/chatbot/session/create/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": this.getCSRFToken(),
+        },
+        body: JSON.stringify({ user_id: null })
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      this.sessionId = data.session_id;
+      this.addBotMessage({
+        message: `👋 Welcome! I'm your shopping assistant. <br>  Here's how I can help you: <br>🔍 Find products  <br>📦 Track your orders  <br>🗂️ Browse categories  <br>💬 Ask questions anytime!<br>`,
+        suggestions: ["🛍 Browse categories", "🔎 Search products", "🚚 Track my order"]
+      });
+      this.loadChatHistory();
+    } catch (error) {
+      console.error("Session init failed:", error);
+      this.addErrorMessage("❌ Failed to create session.");
+    }
+  }
+  async loadChatHistory() {
+    try {
+      const res = await fetch(`/chatbot/session/${this.sessionId}/history/`);
+      const data = await res.json();
+      data.messages.forEach((msg) => {
+        if (msg.sender === "user") {
+          this.addUserMessage(msg.message);
+        } else {
+          this.addBotMessage(msg);
+        }
+      });
+    } catch (error) {
+      console.error("History Error:", error);
+    }
+  }
+  async sendMessage(message) {
+    this.addUserMessage(message);
+    this.messageInput.value = "";
+    this.setTyping(true);
+    this.showTypingIndicator();
+    try {
+      const res = await fetch("/chatbot/chat/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": this.getCSRFToken(),
+        },
+        body: JSON.stringify({ session_id: this.sessionId, message: message }),
+      });
+      const data = await res.json();
+      this.addBotMessage(data);
+    } catch (error) {
+      this.addErrorMessage("❌ Failed to get response from AI.");
+    } finally {
+      this.hideTypingIndicator();
+      this.setTyping(false);
+    }
+  }
+  addUserMessage(message) {
+    const messageElement = this.createMessageElement("user", message);
+    this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
+    this.scrollToBottom();
+  }
+  addBotMessage(response) {
+    const messageElement = this.createMessageElement("bot", response.message || "...");
+    if (response.suggestions?.length) {
+      const suggestionsDiv = document.createElement("div");
+      suggestionsDiv.className = "suggestions";
+      response.suggestions.forEach((text) => {
+        const btn = document.createElement("button");
+        btn.className = "suggestion-btn";
+        btn.textContent = text;
+        btn.onclick = () => this.sendMessage(text);
+        suggestionsDiv.appendChild(btn);
+      });
+      messageElement.querySelector(".message-content").appendChild(suggestionsDiv);
+    }
+    if (response.data?.products?.length) {
+      const products = response.data.products;
+      const productContainer = document.createElement("div");
+      products.forEach((product) => {
+        const link = document.createElement("a");
+        link.href = `/product/${product.pid}/`;
+        link.target = "_blank";
+        link.style.textDecoration = "none";
+        const card = document.createElement("div");
+        card.className = "product-card";
+        card.innerHTML = `
+          <div class="product-header">
+            <div class="product-name">${product.title}</div>
+            <div>
+              ${product.old_price ? `<span class="product-discount">${product.old_price}</span>` : ""}
+              <span class="product-price">${product.price}</span>
+            </div>
+          </div>
+          <div class="product-stock ${product.in_stock ? 'in-stock' : 'out-of-stock'}">
+            ${product.in_stock ? '🟢 In stock' : '🔴 Out of stock'} (${product.stock_count || 0})
+          </div>
+          <button class="suggestion-btn" onclick="addToCart('${product.pid}')">Add to Cart</button>
+        `;
+        card.setAttribute("data-pid", product.pid);
+        card.setAttribute("data-id", product.pid);
+        card.setAttribute("data-title", product.title);
+        card.setAttribute("data-price", product.price);
+        card.setAttribute("data-image", product.image);
+        link.appendChild(card);
+        productContainer.appendChild(card);
+      });
+      messageElement.querySelector(".message-content").appendChild(productContainer);
+    }
+    this.messagesContainer.insertBefore(messageElement, this.typingIndicator);
+    this.scrollToBottom();
+  }
+  addErrorMessage(errorText) {
+    const div = document.createElement("div");
+    div.className = "error-message";
+    div.textContent = errorText;
+    this.messagesContainer.insertBefore(div, this.typingIndicator);
+    this.scrollToBottom();
+  }
+  createMessageElement(type, content) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `message ${type}`;
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "message-content";
+    const text = document.createElement("div");
+    text.innerHTML = content;
+    const time = document.createElement("div");
+    time.className = "message-time";
+    time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    contentDiv.appendChild(text);
+    contentDiv.appendChild(time);
+    msgDiv.appendChild(contentDiv);
+    return msgDiv;
+  }
+  setTyping(isTyping) {
+    this.isTyping = isTyping;
+    this.sendButton.disabled = isTyping;
+    this.messageInput.disabled = isTyping;
+  }
+  showTypingIndicator() {
+    this.typingIndicator.classList.add("show");
+    this.scrollToBottom();
+  }
+  hideTypingIndicator() {
+    this.typingIndicator.classList.remove("show");
+  }
+  scrollToBottom() {
+    setTimeout(() => {
+      this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+    }, 100);
+  }
+}
+let chatBot;
+document.addEventListener("DOMContentLoaded", () => {
+  chatBot = new ChatBot();
+});
+</script>
