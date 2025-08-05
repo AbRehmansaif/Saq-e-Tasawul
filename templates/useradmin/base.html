@@ -38,6 +38,15 @@
                             <span class="text">Dashboard</span>
                         </a>
                     </li>
+
+                    <li class="menu-item {% if '/useradmin/products/' in request.path %}active{% endif %}">
+                        <a class="menu-link" href="{% url 'pricing_dashboard' %}">
+                            <i class="icon material-icons md-dashboard"></i>
+
+                            <span class="text">Pricing Dashboard</span>
+                        </a>
+                    </li>
+
                     <li class="menu-item {% if '/useradmin/products/' in request.path %}active{% endif %}">
                         <a class="menu-link" href="{% url 'useradmin:dashboard-products' %}">
                             <i class="icon material-icons md-shopping_bag"></i>
@@ -122,11 +131,10 @@
                                     
                             </a>
                             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownAccount">
-                                <a class="dropdown-item" href="#"><i class="material-icons md-perm_identity"></i>Edit Profile</a>
-                                <a class="dropdown-item" href="#"><i class="material-icons md-settings"></i>Account Settings</a>
-                                <a class="dropdown-item" href="#"><i class="material-icons md-account_balance_wallet"></i>Wallet</a>
-                                <a class="dropdown-item" href="#"><i class="material-icons md-receipt"></i>Billing</a>
-                                <a class="dropdown-item" href="#"><i class="material-icons md-help_outline"></i>Help center</a>
+                                <a class="dropdown-item" href="{% url 'useradmin:settings' %}"><i class="material-icons md-perm_identity"></i>Edit Profile</a>
+                                <a class="dropdown-item" href="{% url 'pricing_dashboard' %}"><i class="material-icons md-settings"></i>Dynamic Price</a>
+                                <a class="dropdown-item" href="useradmin:orders"><i class="material-icons md-shopping_bag"></i>Order</a>
+                                <a class="dropdown-item" href="{% url 'useradmin:reviews' %}"><i class="material-icons md-comment"></i>Reviews</a>
                                 <div class="dropdown-divider"></div>
                                 <a class="dropdown-item text-danger" href="#"><i class="material-icons md-exit_to_app"></i>Logout</a>
                             </div>
