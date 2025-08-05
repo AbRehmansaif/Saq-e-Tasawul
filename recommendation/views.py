@@ -86,10 +86,33 @@ class HybridRecommendationAPIView(APIView):
         data = [
             {
                 "id": p.id,
+                "pid": getattr(p, 'pid', None),
                 "title": p.title,
                 "price": float(p.price),
                 "image": p.image.url if p.image else None
             }
             for p in recommended_products
+        ]
+        return Response({"status": "success", "recommendations": data})
+
+class HomeRecommendationAPIView(APIView):
+    renderer_classes = [JSONRenderer]
+    def get(self, request):
+        user = request.user if request.user.is_authenticated else None
+        # For demo: recommend top 8 products, or use a utility for general recommendations
+        if user:
+            # If you want to use hybrid logic for user, you can call get_hybrid_recommendations(user.id, None)
+            products = Product.objects.all().order_by('-id')[:8]
+        else:
+            products = Product.objects.all().order_by('-id')[:8]
+        data = [
+            {
+                "id": p.id,
+                "pid": getattr(p, 'pid', None),
+                "title": p.title,
+                "price": float(p.price),
+                "image": p.image.url if p.image else None
+            }
+            for p in products
         ]
         return Response({"status": "success", "recommendations": data})

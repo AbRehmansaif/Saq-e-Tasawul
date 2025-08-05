@@ -121,7 +121,7 @@
                     </div>
                     {% endfor %}
                 </div>
-                <div class="pagination-area mt-20 mb-20">
+                <!-- <div class="pagination-area mt-20 mb-20">
                     <nav aria-label="Page navigation example">
                         <ul class="pagination justify-content-start">
                             <li class="page-item">
@@ -137,9 +137,103 @@
                             </li>
                         </ul>
                     </nav>
-                </div>
+                </div> -->
             </div>
         </div>
     </main>
+<section id="recommendations-section" class="mt-5">
+    <h3 class="text-center mb-4 fw-bold">🔥 Recommended for You</h3>
+    <div id="recommendations-list" class="row g-4"></div>
+</section>
 
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+
+    .recommendation-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        margin: 0 5px
+    }
+    .recommendation-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+    .recommendation-card img {
+        height: 220px;
+        width: 100%;
+        object-fit: cover;
+        /* border-bottom: 2px solid #f1f1f1; */
+    }
+    .price-badge {
+        background: linear-gradient(45deg, #ff6a00, #ee0979);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        z-index: 1;
+    }
+    .rating {
+        color: #ffc107;
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+    }
+    .view-btn {
+        background: #3BB77E;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        transition: background 0.3s;
+    }
+    .view-btn:hover {
+        background: #32a66f;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    fetch('/recommendation/hybrid{{ p.id }}/', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const list = document.getElementById('recommendations-list');
+
+        if (data.status === 'success' && data.recommendations.length > 0) {
+            list.innerHTML = data.recommendations.map(prod => `
+                <div class="card_setting col-md-3 col-sm-6">
+                    <div class="card recommendation-card h-100 position-relative">
+                        <span class="price-badge">$${prod.price}</span>
+                        <img src="${prod.image}" class="card-img-top text-truncate" alt="${prod.title}">
+                        <div class="card-body text-center">
+                            <h5 class="card-title text-truncate">${prod.title}</h5>
+                            <p class="rating">⭐ ${prod.rating || '4.5'}</p>
+                            <a href="/product/${prod.pid}/" class="btn btn-sm view-btn px-3">View Product</a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            list.innerHTML = '<p class="text-center text-muted">No recommendations found.</p>';
+        }
+    })
+    .catch(() => {
+        document.getElementById('recommendations-list').innerHTML = '<p class="text-center text-danger">⚠️ Error loading recommendations.</p>';
+    });
+});
+</script>
     {% endblock content %}
