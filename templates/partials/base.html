@@ -417,15 +417,28 @@
                     </nav>
                     <!-- mobile menu end -->
                 </div>
-                <div class="mobile-header-info-wrap">
+                <div style="li{list-style: none; list-style-type: none;}" class="mobile-header-info-wrap">
                     <div class="single-mobile-header-info">
-                        <a href="#"><i class="fi-rs-marker"></i> Our location </a>
+                        <a href="#"><i class="fi-rs-marker"></i> Gulshan-e-Iqbal, Block-11, Karachi, Pakistan </a>
                     </div>
+                    <ul style="list-style: none; margin: 0; padding: 0;">
+                        {% if request.user.is_authenticated %}
+                            <li style="list-style: none;">
+                                <a href="{% url 'userauths:sign-out' %}">
+                                    <i class="fi fi-rs-sign-out mr-10"></i>Sign out
+                                </a>
+                            </li>
+                        {% else %}
+                            <li style="list-style: none;">
+                                <a href="{% url 'userauths:sign-in' %}">
+                                    <i class="fi fi-rs-sign-in mr-10"></i>Sign In
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+
                     <div class="single-mobile-header-info">
-                        <a href="#"><i class="fi-rs-user"></i>Log In / Sign Up </a>
-                    </div>
-                    <div class="single-mobile-header-info">
-                        <a href="#"><i class="fi-rs-headphones"></i>(+01) - 2345 - 6789 </a>
+                        <a href="#"><i class="fi-rs-headphones"></i>(+92) - 3003 - 301690 </a>
                     </div>
                 </div>
                 <div class="mobile-social-icon mb-50">
